@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "provider.fullname" . }}-bids
+  namespace: {{ .Release.Namespace }}
+data:
+  bid_on_storage.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    data_in=$(jq .)
+
+    memory_total=$(echo "$data_in" | jq 'map(.memory * .count) | add')
+    storage_total=$(echo "$data_in" |  python3 -c "import json;import sys;data=json.load(sys.stdin);data = [(x['count'], x['storage']) for x in data];data = [cnt*sum(z['size'] for z in y) for cnt,y in data]; data= sum(data);json.dump(data,sys.stdout)")
+    cpu_total=$(echo "$data_in" | jq 'map(.cpu * .count) | add')
+    cpu_total_threads=$(bc -l <<<"${cpu_total}/1000")
+
+    memory_gb=$(echo $memory_total | awk '{print $1/1024/1024/1024}')
+    hd_gb=$(echo $storage_total | awk '{print $1/1024/1024/1024}')
+    usd_per_akt=$(curl -s -X GET "https://api.coingecko.com/api/v3/coins/akash-network/tickers" -H  "accept: application/json" | jq '.tickers[] | select(.market.name == "Osmosis").converted_last.usd' | head -n1)
+
+    block_time="6.174"
+    month="30.437"
+
+    TARGET_CPU="3.50"
+    #Target a USD Price for cpu , 1 = $1
+    TARGET_MEMORY="0.50"
+    #Target a USD Price for memory , 1 = $1
+    TARGET_HD="0.25"
+    #Target a USD Price for hard drive , 1 = $1
+
+    total_cost_usd_target=$(bc -l <<<"(($cpu_total_threads * $TARGET_CPU) + ($memory_gb * $TARGET_MEMORY) + ($hd_gb * $TARGET_HD))")
+    #echo $total_cost_usd_target
+    total_cost_akt_target=$(bc -l <<<"(${total_cost_usd_target}/$usd_per_akt)")
+    total_cost_uakt_target=$(bc -l <<<"(${total_cost_akt_target}*1000000)")
+    cost_per_block=$(bc -l <<<"(${total_cost_uakt_target}/425940.524781341)")
+    total_cost_uakt=$(echo "$cost_per_block" | jq 'def ceil: if . | floor == . then . else . + 1.0 | floor end; .|ceil')
+    echo $total_cost_uakt

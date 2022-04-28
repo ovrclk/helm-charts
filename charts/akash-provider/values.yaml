@@ -46,12 +46,15 @@ gasprices: "0.025uakt"
 gas: "210000"
 # --gas-adjustment is ignored when --gas is not "auto"
 gasadjustment: "1.05"
-bidpricestrategy: "scale"
+bidpricestrategy: "shellScript"
 bidpricecpuscale: "0.004"
 bidpricememoryscale: "0.0016"
 bidpriceendpointscale: "0"
 bidpricestoragescale: "0.00016"
 withdrawalperiod: "24h"
+
+bids:
+  enabled: true
 
 deploymentnetworkpoliciesenabled: "false"
 
