@@ -6,7 +6,6 @@ metadata:
 data:
   bid_on_storage.sh: |
     #!/bin/bash
-    set -euo pipefail
     data_in=$(jq .)
 
     cpu_total=$(echo "$data_in" | jq 'map(.cpu * .count) | add')
